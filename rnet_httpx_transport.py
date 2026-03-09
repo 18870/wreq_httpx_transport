@@ -12,7 +12,7 @@ class RnetAsyncByteStream(httpx.AsyncByteStream):
         self.streamer = response.stream()
 
     async def __aiter__(self) -> AsyncIterator[bytes]:
-        async for chunk in self.streamer: # type: ignore
+        async for chunk in self.streamer:  # type: ignore
             yield chunk
 
     async def aclose(self) -> None:
@@ -22,7 +22,7 @@ class RnetAsyncByteStream(httpx.AsyncByteStream):
 class RnetAsyncTransport(httpx.AsyncBaseTransport):
     def __init__(
         self,
-        **kwargs : Unpack["rnet.ClientConfig"],
+        **kwargs: Unpack["rnet.ClientConfig"],
     ) -> None:
         kwargs.setdefault("cookie_store", False)
         self.client = rnet.Client(
@@ -48,8 +48,12 @@ class RnetAsyncTransport(httpx.AsyncBaseTransport):
         }
 
         timeouts = request.extensions.get("timeout", {})
-        request_params["timeout"] = timedelta(seconds=timeouts.get("pool"))
-        request_params["read_timeout"] = timedelta(seconds=timeouts.get("read"))
+        pool_timeout = timeouts.get("pool")
+        read_timeout = timeouts.get("read")
+        if pool_timeout is not None:
+            request_params["timeout"] = timedelta(seconds=pool_timeout)
+        if read_timeout is not None:
+            request_params["read_timeout"] = timedelta(seconds=read_timeout)
 
         try:
             resp = await self.client.request(**request_params)
@@ -78,7 +82,7 @@ class RnetAsyncTransport(httpx.AsyncBaseTransport):
 
         return httpx.Response(
             status_code=resp.status.as_int(),
-            headers=httpx.Headers(resp.headers), # type: ignore
+            headers=httpx.Headers(resp.headers),  # type: ignore
             stream=RnetAsyncByteStream(resp),
             request=request,
         )
